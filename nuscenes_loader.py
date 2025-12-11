@@ -12,7 +12,6 @@ from torch.utils.data import Dataset
 class NuScenesDepthDataset(Dataset):
     """
     Load data directly from nuScenes format
-    No OpenAD annotations needed!
     """
 
     def __init__(
