@@ -1,0 +1,130 @@
+# OpenAD Depth Refinement Configuration - FROZEN DEPTH BASELINE
+# This config freezes the depth network to show trainable depth matters
+
+# ============================================
+# DATASET CONFIGURATION
+# ============================================
+dataset:
+  openad_root: "./data/openad"
+  nuscenes_root: "./data/nuscenes"
+
+  # Use only nuScenes for simplified training
+  training_on:
+    av2: false
+    kitti: false
+    nuscenes: true  # Only this one
+    once: false
+    waymo: false
+
+  # Number of frames (current + past frames)
+  frames: 5
+
+  # Train/val split
+  train_split: 0.9
+  val_split: 0.1
+
+# ============================================
+# MODEL CONFIGURATION
+# ============================================
+model:
+  # 2D detector (frozen)
+  detector_type: "yolo-world"  # Options: "yolo-world" or "generateu"
+  detector_checkpoint: null  # Will use pretrained weights
+
+  # Depth network (FROZEN - this is the key difference!)
+  depth_network:
+    hidden_dims: [256, 512, 512, 256]  # Multi-layer architecture
+    dropout: 0.1
+    use_residual: true
+    freeze: true  # NEW: Freeze depth network
+
+  # 3D box head (trainable)
+  box_head:
+    hidden_dim: 256
+    num_layers: 3
+
+# ============================================
+# TRAINING CONFIGURATION
+# ============================================
+training:
+  # Basic settings - OPTIMIZED FOR CPU
+  batch_size: 4  # CPU-friendly batch size
+  num_epochs: 20  # Fewer epochs for baseline
+  num_workers: 0  # Set to 0 for Windows CPU
+
+  # Optimizer
+  optimizer: "adam"
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  betas: [0.9, 0.999]
+
+  # Learning rate scheduler
+  scheduler: "cosine"
+  warmup_epochs: 3
+  min_lr: 0.000001
+
+  # Loss weights
+  loss_weights:
+    translation: 1.0  # ATE loss
+    scale: 0.5        # ASE loss
+    depth: 1.0        # Direct depth supervision
+
+  # Regularization
+  grad_clip: 1.0
+  label_smoothing: 0.0
+
+  # Early stopping
+  patience: 8  # Less patience for baseline
+  min_delta: 0.001
+
+# ============================================
+# EVALUATION CONFIGURATION
+# ============================================
+evaluation:
+  eval_every: 5  # Evaluate every 5 epochs
+  metrics:
+    - "ATE"  # Average Translation Error
+    - "ASE"  # Average Scale Error
+    - "AR"   # Average Recall
+
+  # Save predictions for visualization
+  save_predictions: true
+  visualize_samples: 10
+
+# ============================================
+# LOGGING & CHECKPOINTS
+# ============================================
+logging:
+  output_dir: "./outputs"
+  experiment_name: "frozen_depth_baseline"  # Different name!
+
+  # Tensorboard
+  use_tensorboard: true
+  log_every: 50  # Log every N iterations
+
+  # Checkpoints
+  save_best: true
+  save_last: true
+  checkpoint_every: 5  # Save every N epochs
+
+# ============================================
+# CLUSTER/SLURM CONFIGURATION
+# ============================================
+cluster:
+  use_slurm: false  # Set to true when running on cluster
+
+  slurm:
+    partition: "gpu"
+    nodes: 1
+    gpus_per_node: 1
+    cpus_per_task: 8
+    mem: "32GB"
+    time: "24:00:00"
+    job_name: "openad_depth"
+    email: null  # Add your email for notifications
+
+# ============================================
+# REPRODUCIBILITY
+# ============================================
+seed: 42
+deterministic: true
